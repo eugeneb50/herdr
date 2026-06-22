@@ -9,9 +9,10 @@ use crate::api::schema::{
     PaneProcessInfo, PaneProcessInfoParams, PaneProcessInfoProcess, PaneReadParams, PaneReadResult,
     PaneReleaseAgentParams, PaneRenameParams, PaneReportAgentParams, PaneReportAgentSessionParams,
     PaneReportMetadataParams, PaneResizeParams, PaneResizeReason, PaneResizeResult,
-    PaneSendInputParams, PaneSendKeysParams, PaneSendTextParams, PaneSplitParams, PaneSwapParams,
-    PaneSwapReason, PaneSwapResult, PaneTarget, PaneZoomMode, PaneZoomParams, PaneZoomReason,
-    PaneZoomResult, ReadFormat, ReadSource, ResponseResult,
+    PaneResolveLabelParams, PaneResolveLabelResult, PaneSendInputParams, PaneSendKeysParams,
+    PaneSendTextParams, PaneSplitParams, PaneSwapParams, PaneSwapReason, PaneSwapResult,
+    PaneTarget, PaneZoomMode, PaneZoomParams, PaneZoomReason, PaneZoomResult, ReadFormat,
+    ReadSource, ResponseResult,
 };
 use crate::app::actions::{PaneZoomCommand, PaneZoomNoopReason};
 use crate::app::{App, Mode};
@@ -159,6 +160,32 @@ impl App {
         };
 
         encode_success(id, ResponseResult::PaneInfo { pane })
+    }
+
+    pub(super) fn handle_pane_resolve_label(
+        &mut self,
+        id: String,
+        params: PaneResolveLabelParams,
+    ) -> String {
+        let Some((ws_idx, pane_id)) = self.state.find_pane_by_label(&params.label) else {
+            return encode_error(
+                id,
+                "pane_not_found",
+                format!("no pane labeled '{}'", params.label),
+            );
+        };
+        let resolved_pane_id = self
+            .public_pane_id(ws_idx, pane_id)
+            .unwrap_or_else(|| pane_id.raw().to_string());
+        encode_success(
+            id,
+            ResponseResult::PaneResolveLabel {
+                resolve: PaneResolveLabelResult {
+                    pane_id: resolved_pane_id,
+                    label: params.label,
+                },
+            },
+        )
     }
 
     pub(super) fn handle_pane_layout(&mut self, id: String, params: PaneLayoutParams) -> String {

@@ -1461,6 +1461,21 @@ impl AppState {
         self.switch_ascii_input_source_in_prefix
     }
 
+    pub fn find_pane_by_label(&self, label: &str) -> Option<(usize, PaneId)> {
+        for (ws_idx, ws) in self.workspaces.iter().enumerate() {
+            for tab in &ws.tabs {
+                for (&pane_id, pane) in &tab.panes {
+                    if let Some(terminal) = self.terminals.get(&pane.attached_terminal_id) {
+                        if terminal.manual_label.as_deref() == Some(label) {
+                            return Some((ws_idx, pane_id));
+                        }
+                    }
+                }
+            }
+        }
+        None
+    }
+
     pub(crate) fn pane_exposes_host_cursor(
         &self,
         _ws_idx: usize,
@@ -2235,6 +2250,48 @@ mod tests {
             menu.items(),
             &["Rename", "Close", "New worktree", "Open worktree..."]
         );
+    }
+
+    #[test]
+    fn find_pane_by_label_finds_matching_pane() {
+        let mut state = AppState::test_new();
+        let ws = crate::workspace::Workspace::test_new("test");
+        let pane_id = ws.tabs[0].root_pane;
+        let terminal_id = ws.tabs[0].panes[&pane_id].attached_terminal_id.clone();
+        let mut terminal =
+            crate::terminal::TerminalState::new(terminal_id, std::path::PathBuf::from("/tmp"));
+        terminal.set_manual_label("my-pane".into());
+        state.terminals.insert(
+            ws.tabs[0].panes[&pane_id].attached_terminal_id.clone(),
+            terminal,
+        );
+        state.workspaces = vec![ws];
+        assert_eq!(state.find_pane_by_label("my-pane"), Some((0, pane_id)));
+    }
+
+    #[test]
+    fn find_pane_by_label_returns_none_for_missing_label() {
+        let mut state = AppState::test_new();
+        let ws = crate::workspace::Workspace::test_new("test");
+        let pane_id = ws.tabs[0].root_pane;
+        let terminal_id = ws.tabs[0].panes[&pane_id].attached_terminal_id.clone();
+        let terminal =
+            crate::terminal::TerminalState::new(terminal_id, std::path::PathBuf::from("/tmp"));
+        state.terminals.insert(
+            ws.tabs[0].panes[&pane_id].attached_terminal_id.clone(),
+            terminal,
+        );
+        state.workspaces = vec![ws];
+        assert_eq!(state.find_pane_by_label("nonexistent"), None);
+    }
+
+    #[test]
+    fn find_pane_by_label_ignores_panes_without_label() {
+        let mut state = AppState::test_new();
+        let ws = crate::workspace::Workspace::test_new("test");
+        state.ensure_test_terminals();
+        state.workspaces = vec![ws];
+        assert_eq!(state.find_pane_by_label("my-pane"), None);
     }
 
     #[test]

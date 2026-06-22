@@ -3,41 +3,91 @@ use crate::api::schema::{
     PaneLayoutParams, PaneListParams, PaneMoveDestination, PaneMoveParams, PaneNeighborParams,
     PaneProcessInfoParams, PaneReadParams, PaneReleaseAgentParams, PaneRenameParams,
     PaneReportAgentParams, PaneReportAgentSessionParams, PaneReportMetadataParams,
-    PaneResizeParams, PaneSendInputParams, PaneSendKeysParams, PaneSendTextParams, PaneSplitParams,
-    PaneSwapParams, PaneTarget, PaneZoomMode, PaneZoomParams, ReadFormat, ReadSource, Request,
-    SplitDirection,
+    PaneResizeParams, PaneResolveLabelParams, PaneSendInputParams, PaneSendKeysParams,
+    PaneSendTextParams, PaneSplitParams, PaneSwapParams, PaneTarget, PaneZoomMode, PaneZoomParams,
+    ReadFormat, ReadSource, Request, SplitDirection,
 };
 
 pub(super) fn run_pane_command(args: &[String]) -> std::io::Result<i32> {
-    let Some(subcommand) = args.first().map(|arg| arg.as_str()) else {
+    // Extract --label flag if present and resolve it to a pane_id.
+    let mut resolved_label_pane_id: Option<String> = None;
+    let mut filtered_args = Vec::new();
+    let mut i = 0;
+    while i < args.len() {
+        if args[i] == "--label" {
+            let Some(label) = args.get(i + 1) else {
+                eprintln!("missing value for --label");
+                return Ok(2);
+            };
+            let response = super::send_request(&Request {
+                id: "cli:pane:resolve-label".into(),
+                method: Method::PaneResolveLabel(PaneResolveLabelParams {
+                    label: label.clone(),
+                }),
+            })?;
+            if let Some(error) = response.get("error") {
+                eprintln!("{}", serde_json::to_string(error).unwrap());
+                return Ok(1);
+            }
+            if let Some(error) = response.get("error") {
+                eprintln!("{}", serde_json::to_string(error).unwrap());
+                return Ok(1);
+            }
+            if let Some(pane_id) = response["result"]["resolve"]["pane_id"].as_str() {
+                resolved_label_pane_id = Some(pane_id.to_string());
+            }
+            i += 2;
+        } else {
+            filtered_args.push(args[i].clone());
+            i += 1;
+        }
+    }
+
+    // If --label was resolved, inject the pane_id after the subcommand.
+    let effective_args = if let Some(pane_id) = resolved_label_pane_id {
+        let mut with_pane = Vec::new();
+        if let Some(subcommand) = filtered_args.first().cloned() {
+            with_pane.push(subcommand);
+            with_pane.push(pane_id);
+            with_pane.extend(filtered_args.into_iter().skip(1));
+        } else {
+            with_pane.push(pane_id);
+            with_pane.extend(filtered_args);
+        }
+        with_pane
+    } else {
+        filtered_args
+    };
+
+    let Some(subcommand) = effective_args.first().map(|arg| arg.as_str()) else {
         print_pane_help();
         return Ok(2);
     };
 
     match subcommand {
-        "list" => pane_list(&args[1..]),
-        "current" => pane_current(&args[1..]),
-        "get" => pane_get(&args[1..]),
-        "layout" => pane_layout(&args[1..]),
-        "process-info" => pane_process_info(&args[1..]),
-        "neighbor" => pane_neighbor(&args[1..]),
-        "edges" => pane_edges(&args[1..]),
-        "focus" => pane_focus(&args[1..]),
-        "resize" => pane_resize(&args[1..]),
-        "zoom" => pane_zoom(&args[1..]),
-        "read" => pane_read(&args[1..]),
-        "rename" => pane_rename(&args[1..]),
-        "split" => pane_split(&args[1..]),
-        "swap" => pane_swap(&args[1..]),
-        "move" => pane_move(&args[1..]),
-        "close" => pane_close(&args[1..]),
-        "send-text" => pane_send_text(&args[1..]),
-        "send-keys" => pane_send_keys(&args[1..]),
-        "report-agent" => pane_report_agent(&args[1..]),
-        "report-agent-session" => pane_report_agent_session(&args[1..]),
-        "release-agent" => pane_release_agent(&args[1..]),
-        "report-metadata" => pane_report_metadata(&args[1..]),
-        "run" => pane_run(&args[1..]),
+        "list" => pane_list(&effective_args[1..]),
+        "current" => pane_current(&effective_args[1..]),
+        "get" => pane_get(&effective_args[1..]),
+        "layout" => pane_layout(&effective_args[1..]),
+        "process-info" => pane_process_info(&effective_args[1..]),
+        "neighbor" => pane_neighbor(&effective_args[1..]),
+        "edges" => pane_edges(&effective_args[1..]),
+        "focus" => pane_focus(&effective_args[1..]),
+        "resize" => pane_resize(&effective_args[1..]),
+        "zoom" => pane_zoom(&effective_args[1..]),
+        "read" => pane_read(&effective_args[1..]),
+        "rename" => pane_rename(&effective_args[1..]),
+        "split" => pane_split(&effective_args[1..]),
+        "swap" => pane_swap(&effective_args[1..]),
+        "move" => pane_move(&effective_args[1..]),
+        "close" => pane_close(&effective_args[1..]),
+        "send-text" => pane_send_text(&effective_args[1..]),
+        "send-keys" => pane_send_keys(&effective_args[1..]),
+        "report-agent" => pane_report_agent(&effective_args[1..]),
+        "report-agent-session" => pane_report_agent_session(&effective_args[1..]),
+        "release-agent" => pane_release_agent(&effective_args[1..]),
+        "report-metadata" => pane_report_metadata(&effective_args[1..]),
+        "run" => pane_run(&effective_args[1..]),
         "help" | "--help" | "-h" => {
             print_pane_help();
             Ok(0)
