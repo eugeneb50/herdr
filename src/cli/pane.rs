@@ -29,10 +29,6 @@ pub(super) fn run_pane_command(args: &[String]) -> std::io::Result<i32> {
                 eprintln!("{}", serde_json::to_string(error).unwrap());
                 return Ok(1);
             }
-            if let Some(error) = response.get("error") {
-                eprintln!("{}", serde_json::to_string(error).unwrap());
-                return Ok(1);
-            }
             if let Some(pane_id) = response["result"]["resolve"]["pane_id"].as_str() {
                 resolved_label_pane_id = Some(pane_id.to_string());
             }
@@ -1508,6 +1504,7 @@ fn print_pane_help() {
     eprintln!("  herdr pane release-agent <pane_id> --source ID --agent LABEL [--seq N]");
     eprintln!("  herdr pane report-metadata <pane_id> --source ID [--agent LABEL] [--applies-to-source ID] [--title TEXT|--clear-title] [--display-agent TEXT|--clear-display-agent] [--custom-status TEXT|--clear-custom-status] [--state-label STATUS=TEXT] [--clear-state-labels] [--seq N] [--ttl-ms N]");
     eprintln!("  herdr pane run <pane_id> <command>");
+    eprintln!("  herdr pane --label LABEL <subcommand>");
 }
 
 #[cfg(test)]
