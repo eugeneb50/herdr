@@ -1,19 +1,35 @@
+pub(crate) mod core;
+mod render;
+mod cursor;
+mod scroll;
+mod kitty;
+mod hooks;
+
 use std::borrow::Cow;
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use bytes::Bytes;
-use ratatui::style::{Color, Modifier, Style};
 use ratatui::{layout::Rect, Frame};
-use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 use tracing::{debug, error};
-use unicode_width::UnicodeWidthStr;
 
 use crate::layout::PaneId;
-use crate::protocol::CellData;
 
-use super::cursor::{CursorPositionSettleState, DecscusrTracker, CURSOR_POSITION_SETTLE};
+use self::core::{GhosttyPaneCore, ProcessBytesResult, TerminalCursorState};
+use self::cursor::{
+    current_cursor_state, cursor_position_settle_pending, effective_cursor_state,
+    render_delay_after_pty_write,
+};
+use self::kitty::contains_kitty_graphics_sequence;
+use self::render::{
+    ghostty_collect_dirty_patch, ghostty_detection_text, ghostty_extract_selection,
+    ghostty_recent_ansi, ghostty_recent_text, ghostty_recent_text_unwrapped, ghostty_visible_ansi,
+    ghostty_visible_hyperlinks, ghostty_visible_text,
+};
+use self::scroll::ghostty_restore_scroll_offset_from_bottom;
+use self::core::{CURSOR_POSITION_SETTLE_ENABLED, DEFAULT_DETECTION_ROWS};
+use crate::pane::cursor::CURSOR_POSITION_SETTLE;
 use super::{
     input::{
         ghostty_key_event_from_terminal_key, ghostty_mouse_encoder_for_terminal,
@@ -31,108 +47,15 @@ use super::{
     xtgettcap::{XtgettcapQueryTracker, XtgettcapResponse},
 };
 
-const DEFAULT_DETECTION_ROWS: usize = 24;
-const KITTY_GRAPHICS_REDRAW_SETTLE: Duration = Duration::from_millis(20);
-const CURSOR_POSITION_SETTLE_ENABLED: bool = cfg!(windows);
 const MODE_MOUSE_X10: u16 = 9;
 const MODE_MOUSE_PRESS_RELEASE: u16 = 1000;
 const MODE_MOUSE_BUTTON_MOTION: u16 = 1002;
 const MODE_MOUSE_ANY_MOTION: u16 = 1003;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ScrollMetrics {
-    pub offset_from_bottom: usize,
-    pub max_offset_from_bottom: usize,
-    pub viewport_rows: usize,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct TerminalCursorState {
-    pub x: u16,
-    pub y: u16,
-    pub visible: bool,
-    /// DECSCUSR parameter (0–6). 0 means terminal default.
-    pub shape: u8,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct TerminalDirtyPatch {
-    pub rows: Vec<(u16, Vec<CellData>)>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum TerminalDirtyPatchOutcome {
-    Clean,
-    Patch(TerminalDirtyPatch),
-    Fallback,
-}
-
-fn decscusr_cursor_shape(style: crate::ghostty::CursorVisualStyle, blinking: bool) -> u8 {
-    match (style, blinking) {
-        (crate::ghostty::CursorVisualStyle::Block, true)
-        | (crate::ghostty::CursorVisualStyle::BlockHollow, true) => 1,
-        (crate::ghostty::CursorVisualStyle::Block, false)
-        | (crate::ghostty::CursorVisualStyle::BlockHollow, false) => 2,
-        (crate::ghostty::CursorVisualStyle::Underline, true) => 3,
-        (crate::ghostty::CursorVisualStyle::Underline, false) => 4,
-        (crate::ghostty::CursorVisualStyle::Bar, true) => 5,
-        (crate::ghostty::CursorVisualStyle::Bar, false) => 6,
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct InputState {
-    pub alternate_screen: bool,
-    pub application_cursor: bool,
-    pub bracketed_paste: bool,
-    pub focus_reporting: bool,
-    pub mouse_protocol_mode: crate::input::MouseProtocolMode,
-    pub mouse_protocol_encoding: crate::input::MouseProtocolEncoding,
-    pub mouse_alternate_scroll: bool,
-    #[serde(default)]
-    pub modify_other_keys: bool,
-}
-
-impl InputState {
-    pub fn mouse_reporting_enabled(self) -> bool {
-        self.mouse_protocol_mode.reporting_enabled()
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct ProcessBytesResult {
-    pub request_render: bool,
-    pub render_delay: Option<Duration>,
-    pub clipboard_writes: Vec<Vec<u8>>,
-    pub reported_cwd: Option<std::path::PathBuf>,
-    pub terminal_responses: Vec<Bytes>,
-}
-
 pub(crate) struct GhosttyPaneTerminal {
     pub core: Mutex<GhosttyPaneCore>,
     key_encoder: Mutex<crate::ghostty::KeyEncoder>,
     pending_pty_responses: Arc<Mutex<Vec<Bytes>>>,
-}
-
-pub(crate) struct GhosttyPaneCore {
-    pub terminal: crate::ghostty::Terminal,
-    pub render_state: crate::ghostty::RenderState,
-    pub kitty_keyboard: KittyKeyboardTracker,
-    pub initial_default_foreground: Option<crate::ghostty::RgbColor>,
-    pub initial_default_background: Option<crate::ghostty::RgbColor>,
-    pub host_terminal_theme: crate::terminal_theme::TerminalTheme,
-    pub transient_default_color_owner_pgid: Option<u32>,
-    pub default_color_tracker: DefaultColorOscTracker,
-    pub default_color_event_tracker: DefaultColorEventTracker,
-    pub child_default_foreground_changed: bool,
-    pub child_default_background_changed: bool,
-    pub osc52_forwarder: Osc52Forwarder,
-    pub cwd_osc_tracker: CwdOscTracker,
-    pub osc_debug_tracker: OscDebugTracker,
-    pub agent_osc_state: AgentOscStateTracker,
-    pub xtgettcap_query_tracker: XtgettcapQueryTracker,
-    decscusr_tracker: DecscusrTracker,
-    cursor_settle_state: CursorPositionSettleState,
 }
 
 pub(crate) struct PaneTerminal {
