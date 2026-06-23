@@ -176,6 +176,19 @@ const CURSOR_HOOK_INSTALL_NAME: &str = "herdr-agent-state.sh";
 const CURSOR_HOOK_ASSET: &str = include_str!("assets/cursor/herdr-agent-state.sh");
 const CURSOR_INTEGRATION_VERSION: u32 = 1;
 const CURSOR_CONFIG_DIR_ENV_VAR: &str = "CURSOR_CONFIG_DIR";
+
+const ZERCLAW_HOOK_INSTALL_NAME: &str = if cfg!(windows) {
+    "herdr-agent-state.ps1"
+} else {
+    "herdr-agent-state.sh"
+};
+const ZERCLAW_HOOK_ASSET: &str = if cfg!(windows) {
+    include_str!("assets/zeroclaw/herdr-agent-state.ps1")
+} else {
+    include_str!("assets/zeroclaw/herdr-agent-state.sh")
+};
+const ZERCLAW_INTEGRATION_VERSION: u32 = 1;
+
 const INTEGRATION_VERSION_MARKER: &str = "HERDR_INTEGRATION_VERSION=";
 
 #[derive(Debug)]
@@ -257,6 +270,11 @@ pub(crate) struct CursorUninstallResult {
     pub hooks_path: PathBuf,
     pub removed_hook_file: bool,
     pub updated_hooks: bool,
+}
+
+#[derive(Debug)]
+pub(crate) struct ZeroclawInstallPaths {
+    pub hook_path: PathBuf,
 }
 
 #[derive(Debug)]
@@ -658,6 +676,13 @@ fn install_target_inner(target: crate::api::schema::IntegrationTarget) -> io::Re
                 format!("updated cursor hooks at {}", installed.hooks_path.display()),
             ]
         }
+        crate::api::schema::IntegrationTarget::Zeroclaw => {
+            let installed = install_zeroclaw()?;
+            vec![format!(
+                "installed zeroclaw integration hook to {}",
+                installed.hook_path.display()
+            )]
+        }
     };
 
     if let Some(warning) = version_warning {
@@ -985,6 +1010,22 @@ pub(crate) fn uninstall_target(
             }
             messages
         }
+        crate::api::schema::IntegrationTarget::Zeroclaw => {
+            let result = uninstall_zeroclaw()?;
+            let mut messages = Vec::new();
+            if result.removed_hook_file {
+                messages.push(format!(
+                    "removed zeroclaw hook at {}",
+                    result.hook_path.display()
+                ));
+            } else {
+                messages.push(format!(
+                    "no zeroclaw hook found at {}",
+                    result.hook_path.display()
+                ));
+            }
+            messages
+        }
     };
 
     crate::logging::integration_action("uninstall", integration_target_label(target), "ok");
@@ -1008,6 +1049,7 @@ pub(crate) fn integration_target_label(
         crate::api::schema::IntegrationTarget::Hermes => "hermes",
         crate::api::schema::IntegrationTarget::Qodercli => "qodercli",
         crate::api::schema::IntegrationTarget::Cursor => "cursor",
+        crate::api::schema::IntegrationTarget::Zeroclaw => "zeroclaw",
     }
 }
 
@@ -1880,6 +1922,16 @@ pub(crate) fn install_hermes() -> io::Result<HermesInstallPaths> {
     })
 }
 
+pub(crate) fn install_zeroclaw() -> io::Result<ZeroclawInstallPaths> {
+    let hooks_dir = herdr_hooks_dir()?;
+    fs::create_dir_all(&hooks_dir)?;
+
+    let hook_path = hooks_dir.join(ZERCLAW_HOOK_INSTALL_NAME);
+    fs::write(&hook_path, ZERCLAW_HOOK_ASSET)?;
+
+    Ok(ZeroclawInstallPaths { hook_path })
+}
+
 pub(crate) fn uninstall_pi() -> io::Result<PiUninstallResult> {
     let extension_path = pi_extension_dir()?.join(PI_EXTENSION_INSTALL_NAME);
     let removed_extension = remove_file_if_exists(&extension_path)?;
@@ -2452,6 +2504,14 @@ pub(crate) fn uninstall_cursor() -> io::Result<CursorUninstallResult> {
         removed_hook_file,
         updated_hooks,
     })
+}
+
+pub(crate) fn uninstall_zeroclaw() -> io::Result<ZeroclawInstallPaths> {
+    let hooks_dir = herdr_hooks_dir()?;
+    let hook_path = hooks_dir.join(ZERCLAW_HOOK_INSTALL_NAME);
+    let removed_hook_file = remove_file_if_exists(&hook_path)?;
+
+    Ok(ZeroclawInstallPaths { hook_path })
 }
 
 fn ensure_hooks_object<'a>(
