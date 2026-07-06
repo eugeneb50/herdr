@@ -2,8 +2,10 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
-const MAX_SESSION_ID_LEN: usize = 512;
+pub const MAX_SESSION_ID_LEN: usize = 512;
 const MAX_SESSION_PATH_LEN: usize = 4096;
+
+pub const GENERIC_RELAY_SOURCE: &str = "generic:relay";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AgentSessionRef {
@@ -67,6 +69,10 @@ pub fn session_ref_from_report(
     }
 
     agent_session_id.and_then(AgentSessionRef::id)
+}
+
+pub fn relay_session_ref(session_id: &str) -> Option<AgentSessionRef> {
+    AgentSessionRef::id(session_id)
 }
 
 pub fn normalize_session_start_source(value: Option<String>) -> Option<String> {
@@ -661,5 +667,31 @@ mod tests {
             "devin-session"
         )
         .is_some());
+    }
+
+    #[test]
+    fn relay_session_ref_accepts_any_valid_session_id() {
+        let ref_ = relay_session_ref("my-session-123").unwrap();
+        assert_eq!(ref_.kind, AgentSessionRefKind::Id);
+        assert_eq!(ref_.value, "my-session-123");
+
+        let ref_ = relay_session_ref("a").unwrap();
+        assert_eq!(ref_.kind, AgentSessionRefKind::Id);
+        assert_eq!(ref_.value, "a");
+
+        let ref_ = relay_session_ref("8f14e45f-ceea-467f-a9f6-d7e3f03").unwrap();
+        assert_eq!(ref_.kind, AgentSessionRefKind::Id);
+    }
+
+    #[test]
+    fn relay_session_ref_rejects_empty_and_control_chars() {
+        assert!(relay_session_ref("").is_none());
+        assert!(relay_session_ref("has\nnewline").is_none());
+        assert!(relay_session_ref("has\ttab").is_none());
+    }
+
+    #[test]
+    fn relay_session_ref_source_constant_is_generic_relay() {
+        assert_eq!(GENERIC_RELAY_SOURCE, "generic:relay");
     }
 }

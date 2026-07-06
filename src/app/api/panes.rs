@@ -7,11 +7,11 @@ use crate::api::schema::{
     PaneLayoutRect, PaneLayoutSnapshot, PaneLayoutSplit, PaneListParams, PaneMoveDestination,
     PaneMoveParams, PaneMoveReason, PaneMoveResult, PaneNeighborParams, PaneNeighborResult,
     PaneProcessInfo, PaneProcessInfoParams, PaneProcessInfoProcess, PaneReadParams, PaneReadResult,
-    PaneReleaseAgentParams, PaneRenameParams, PaneReportAgentParams, PaneReportAgentSessionParams,
-    PaneReportMetadataParams, PaneResizeParams, PaneResizeReason, PaneResizeResult,
-    PaneSendInputParams, PaneSendKeysParams, PaneSendTextParams, PaneSplitParams, PaneSwapParams,
-    PaneSwapReason, PaneSwapResult, PaneTarget, PaneZoomMode, PaneZoomParams, PaneZoomReason,
-    PaneZoomResult, ReadFormat, ReadSource, ResponseResult,
+    PaneReleaseAgentParams, PaneRelaySessionIdParams, PaneRenameParams, PaneReportAgentParams,
+    PaneReportAgentSessionParams, PaneReportMetadataParams, PaneResizeParams, PaneResizeReason,
+    PaneResizeResult, PaneSendInputParams, PaneSendKeysParams, PaneSendTextParams, PaneSplitParams,
+    PaneSwapParams, PaneSwapReason, PaneSwapResult, PaneTarget, PaneZoomMode, PaneZoomParams,
+    PaneZoomReason, PaneZoomResult, ReadFormat, ReadSource, ResponseResult,
 };
 use crate::app::actions::{PaneZoomCommand, PaneZoomNoopReason};
 use crate::app::{App, Mode};
@@ -1266,6 +1266,48 @@ impl App {
             session_start_source: crate::agent_resume::normalize_session_start_source(
                 params.session_start_source,
             ),
+        });
+
+        encode_success(id, ResponseResult::Ok {})
+    }
+
+    pub(super) fn handle_pane_relay_session_id(
+        &mut self,
+        id: String,
+        params: PaneRelaySessionIdParams,
+    ) -> String {
+        let Some((_ws_idx, pane_id)) = self.parse_pane_id(&params.pane_id) else {
+            return pane_not_found(id, &params.pane_id);
+        };
+
+        let session_id = params.session_id.trim().to_string();
+        if session_id.is_empty()
+            || session_id.len() > crate::agent_resume::MAX_SESSION_ID_LEN
+            || session_id.chars().any(char::is_control)
+        {
+            return encode_error(
+                id,
+                "invalid_session_id",
+                "session_id must be non-empty, contain no control characters, and be at most 512 bytes",
+            );
+        }
+
+        let Some(session_ref) = crate::agent_resume::relay_session_ref(&session_id) else {
+            return encode_error(id, "invalid_session_id", "session_id validation failed");
+        };
+
+        let source = params
+            .source
+            .unwrap_or_else(|| crate::agent_resume::GENERIC_RELAY_SOURCE.to_string());
+        let agent_label = params
+            .agent_label
+            .and_then(|label| normalize_reported_agent_label(&label));
+
+        self.handle_internal_event(crate::events::AppEvent::SessionIdRelayed {
+            pane_id,
+            source,
+            agent_label,
+            session_ref,
         });
 
         encode_success(id, ResponseResult::Ok {})

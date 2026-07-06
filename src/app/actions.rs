@@ -2540,6 +2540,17 @@ impl AppState {
                     .collect()
                 }
             }
+            AppEvent::SessionIdRelayed {
+                pane_id,
+                source,
+                agent_label,
+                session_ref,
+            } => self
+                .update_terminal_state(pane_id, |terminal| {
+                    terminal.set_relay_session_ref(source, agent_label, session_ref)
+                })
+                .into_iter()
+                .collect(),
             // Both intercepted before this dispatch — in App::handle_internal_event (monolithic)
             // or via HeadlessServer forwarding to the foreground client (server); never touch
             // AppState. Kept for AppEvent exhaustiveness.

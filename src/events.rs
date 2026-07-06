@@ -117,6 +117,13 @@ pub enum AppEvent {
         known_agent: Option<Agent>,
         seq: Option<u64>,
     },
+    /// A generic session ID was relayed by an agentic framework (no hook authority).
+    SessionIdRelayed {
+        pane_id: PaneId,
+        source: String,
+        agent_label: Option<String>,
+        session_ref: crate::agent_resume::AgentSessionRef,
+    },
     /// A new version is available through the active installation manager.
     UpdateReady {
         version: String,

@@ -1032,6 +1032,26 @@ impl TerminalState {
         })
     }
 
+    pub fn set_relay_session_ref(
+        &mut self,
+        source: String,
+        agent_label: Option<String>,
+        session_ref: crate::agent_resume::AgentSessionRef,
+    ) -> Option<TerminalStateMutation> {
+        let label = agent_label.unwrap_or_else(|| "unknown".to_string());
+        let previous_session = self.current_session_identity_for_persistence();
+        self.persisted_agent_session = Some(crate::agent_resume::PersistedAgentSession {
+            source,
+            agent: label,
+            session_ref,
+        });
+        let current_session = self.current_session_identity_for_persistence();
+        Some(TerminalStateMutation {
+            effective_state_change: None,
+            session_ref_changed: previous_session != current_session,
+        })
+    }
+
     fn known_agent_label_conflicts_with_detected_agent(&self, agent_label: &str) -> bool {
         let Some(detected_agent) = self.detected_agent else {
             return false;
@@ -4351,5 +4371,53 @@ mod tests {
             terminal.hook_authority.as_ref().unwrap().source,
             "custom:pi"
         );
+    }
+
+    #[test]
+    fn set_relay_session_ref_stores_session_without_hook_authority() {
+        let mut terminal = test_terminal();
+        let session_ref = crate::agent_resume::AgentSessionRef::id("relay-session").unwrap();
+
+        let change = terminal.set_relay_session_ref(
+            "generic:relay".into(),
+            Some("openhands".into()),
+            session_ref.clone(),
+        );
+
+        assert!(change.is_some());
+        let change = change.unwrap();
+        assert!(change.effective_state_change.is_none());
+        assert!(change.session_ref_changed);
+
+        let session = terminal.persisted_agent_session.as_ref().unwrap();
+        assert_eq!(session.source, "generic:relay");
+        assert_eq!(session.agent, "openhands");
+        assert_eq!(session.session_ref, session_ref);
+
+        assert!(terminal.hook_authority.is_none());
+    }
+
+    #[test]
+    fn set_relay_session_ref_defaults_agent_label_to_unknown() {
+        let mut terminal = test_terminal();
+        let session_ref = crate::agent_resume::AgentSessionRef::id("test-id").unwrap();
+
+        let _ = terminal.set_relay_session_ref("generic:relay".into(), None, session_ref);
+
+        let session = terminal.persisted_agent_session.as_ref().unwrap();
+        assert_eq!(session.agent, "unknown");
+    }
+
+    #[test]
+    fn set_relay_session_ref_reports_no_change_when_same_session() {
+        let mut terminal = test_terminal();
+        let session_ref = crate::agent_resume::AgentSessionRef::id("same-id").unwrap();
+
+        let _ = terminal.set_relay_session_ref("generic:relay".into(), None, session_ref.clone());
+
+        let change = terminal.set_relay_session_ref("generic:relay".into(), None, session_ref);
+
+        assert!(change.is_some());
+        assert!(!change.unwrap().session_ref_changed);
     }
 }

@@ -169,6 +169,8 @@ pub enum Method {
     PaneClearAgentAuthority(PaneClearAgentAuthorityParams),
     #[serde(rename = "pane.release_agent")]
     PaneReleaseAgent(PaneReleaseAgentParams),
+    #[serde(rename = "pane.relay_session_id")]
+    PaneRelaySessionId(PaneRelaySessionIdParams),
     #[serde(rename = "pane.close")]
     PaneClose(PaneTarget),
     #[serde(rename = "events.subscribe")]
