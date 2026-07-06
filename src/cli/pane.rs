@@ -3,9 +3,9 @@ use crate::api::schema::{
     PaneLayoutParams, PaneListParams, PaneMoveDestination, PaneMoveParams, PaneNeighborParams,
     PaneProcessInfoParams, PaneReadParams, PaneRelaySessionIdParams, PaneReleaseAgentParams,
     PaneRenameParams, PaneReportAgentParams, PaneReportAgentSessionParams,
-    PaneReportMetadataParams, PaneResizeParams, PaneSendInputParams, PaneSendKeysParams,
-    PaneSendTextParams, PaneSplitParams, PaneSwapParams, PaneTarget, PaneZoomMode, PaneZoomParams,
-    ReadFormat, ReadSource, Request, SplitDirection,
+    PaneReportMetadataParams, PaneResolveLabelParams, PaneResizeParams, PaneSendInputParams,
+    PaneSendKeysParams, PaneSendTextParams, PaneSplitParams, PaneSwapParams, PaneTarget,
+    PaneZoomMode, PaneZoomParams, ReadFormat, ReadSource, Request, SplitDirection,
 };
 
 pub(super) fn run_pane_command(args: &[String]) -> std::io::Result<i32> {
@@ -82,7 +82,7 @@ pub(super) fn run_pane_command(args: &[String]) -> std::io::Result<i32> {
         "report-agent" => pane_report_agent(&effective_args[1..]),
         "report-agent-session" => pane_report_agent_session(&effective_args[1..]),
         "release-agent" => pane_release_agent(&effective_args[1..]),
-        "relay-session-id" => pane_relay_session_id(&args[1..]),
+        "relay-session-id" => pane_relay_session_id(&effective_args[1..]),
         "report-metadata" => pane_report_metadata(&effective_args[1..]),
         "run" => pane_run(&effective_args[1..]),
         "help" | "--help" | "-h" => {

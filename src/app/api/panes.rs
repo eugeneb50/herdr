@@ -7,12 +7,12 @@ use crate::api::schema::{
     PaneLayoutRect, PaneLayoutSnapshot, PaneLayoutSplit, PaneListParams, PaneMoveDestination,
     PaneMoveParams, PaneMoveReason, PaneMoveResult, PaneNeighborParams, PaneNeighborResult,
     PaneProcessInfo, PaneProcessInfoParams, PaneProcessInfoProcess, PaneReadParams, PaneReadResult,
-    PaneReleaseAgentParams, PaneRenameParams, PaneReportAgentParams, PaneReportAgentSessionParams,
-    PaneReportMetadataParams, PaneResizeParams, PaneResizeReason, PaneResizeResult,
-    PaneResolveLabelParams, PaneResolveLabelResult, PaneSendInputParams, PaneSendKeysParams,
-    PaneSendTextParams, PaneSplitParams, PaneSwapParams, PaneSwapReason, PaneSwapResult,
-    PaneTarget, PaneZoomMode, PaneZoomParams, PaneZoomReason, PaneZoomResult, ReadFormat,
-    ReadSource, ResponseResult,
+    PaneReleaseAgentParams, PaneRelaySessionIdParams, PaneRenameParams, PaneReportAgentParams,
+    PaneReportAgentSessionParams, PaneReportMetadataParams, PaneResizeParams, PaneResizeReason,
+    PaneResizeResult, PaneResolveLabelParams, PaneResolveLabelResult, PaneSendInputParams,
+    PaneSendKeysParams, PaneSendTextParams, PaneSplitParams, PaneSwapParams, PaneSwapReason,
+    PaneSwapResult, PaneTarget, PaneZoomMode, PaneZoomParams, PaneZoomReason, PaneZoomResult,
+    ReadFormat, ReadSource, ResponseResult,
 };
 use crate::app::actions::{PaneZoomCommand, PaneZoomNoopReason};
 use crate::app::{App, Mode};
