@@ -992,6 +992,9 @@ impl App {
                 return self.handle_pane_send_input(request.id, params)
             }
             Method::PaneClose(target) => return self.handle_pane_close(request.id, target),
+            Method::PaneResolveLabel(params) => {
+                return self.handle_pane_resolve_label(request.id, params);
+            }
             Method::PaneSendKeys(params) => return self.handle_pane_send_keys(request.id, params),
             Method::IntegrationInstall(params) => {
                 return self.handle_integration_install(request.id, params);
