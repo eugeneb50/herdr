@@ -697,9 +697,9 @@ pub(super) fn apply_context_menu_action(
                 .map(|space| space.key.clone())
             {
                 if collapsed {
-                    state.collapsed_space_keys.remove(&key);
+                    state.pure.collapsed_space_keys.remove(&key);
                 } else {
-                    state.collapsed_space_keys.insert(key);
+                    state.pure.collapsed_space_keys.insert(key);
                 }
                 state.mark_session_dirty();
             }
@@ -1113,9 +1113,9 @@ impl App {
                     .map(|space| space.key.clone())
                 {
                     if collapsed {
-                        self.state.collapsed_space_keys.remove(&key);
+                        self.state.pure.collapsed_space_keys.remove(&key);
                     } else {
-                        self.state.collapsed_space_keys.insert(key);
+                        self.state.pure.collapsed_space_keys.insert(key);
                     }
                     self.state.mark_session_dirty();
                 }

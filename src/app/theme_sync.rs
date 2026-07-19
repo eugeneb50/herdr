@@ -76,10 +76,10 @@ impl App {
             &self.state.theme_runtime,
             self.state.host_terminal_appearance,
         );
-        if self.state.theme_name == theme_name && self.state.palette == palette {
+        if self.state.pure.theme_name == theme_name && self.state.palette == palette {
             return false;
         }
-        self.state.theme_name = theme_name;
+        self.state.pure.theme_name = theme_name;
         self.state.palette = palette;
         self.render_dirty.store(true, Ordering::Release);
         self.render_notify.notify_one();

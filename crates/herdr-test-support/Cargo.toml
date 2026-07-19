@@ -1,0 +1,15 @@
+[package]
+name = "herdr-test-support"
+version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+homepage = { workspace = true }
+
+[dependencies]
+herdr-state = { path = "../herdr-state" }
+ratatui = { workspace = true }
+crossterm = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+tempfile = "3"

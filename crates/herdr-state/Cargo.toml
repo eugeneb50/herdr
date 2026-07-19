@@ -1,0 +1,21 @@
+[package]
+name = "herdr-state"
+version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+homepage = { workspace = true }
+
+[dependencies]
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+ratatui = { workspace = true, features = ["unstable-rendered-line-info", "serde"] }
+crossterm = { workspace = true, features = [] }
+unicode-width = { workspace = true }
+regex = { workspace = true }
+toml = { workspace = true }
+schemars = { workspace = true, features = ["derive"] }
+tracing = { workspace = true }
+bytes = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "sync", "time"] }
+sha2 = { workspace = true }

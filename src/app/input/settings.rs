@@ -108,7 +108,7 @@ fn preview_selected_theme(state: &mut AppState) {
             palette.accent = crate::config::parse_color(accent);
         }
         state.palette = palette;
-        state.theme_name = name.to_string();
+        state.pure.theme_name = name.to_string();
     }
 }
 
@@ -117,7 +117,7 @@ fn cancel_settings(state: &mut AppState) {
         state.palette = palette;
     }
     if let Some(theme_name) = state.settings.original_theme.take() {
-        state.theme_name = theme_name;
+        state.pure.theme_name = theme_name;
     }
     super::modal::leave_modal(state);
 }
@@ -132,7 +132,7 @@ fn integrations_need_install(state: &AppState) -> bool {
 fn apply_settings(state: &mut AppState) -> Option<SettingsAction> {
     match state.settings.section {
         SettingsSection::Theme => {
-            let theme_name = state.theme_name.clone();
+            let theme_name = state.pure.theme_name.clone();
             state.settings.original_palette = None;
             state.settings.original_theme = None;
             super::modal::leave_modal(state);
@@ -194,7 +194,7 @@ pub(super) fn update_settings_state(state: &mut AppState, key: KeyEvent) -> Opti
             }
             KeyCode::BackTab | KeyCode::Left | KeyCode::Char('h') => {
                 state.settings.section = SettingsSection::Theme;
-                state.settings.list.selected = current_theme_index(&state.theme_name);
+                state.settings.list.selected = current_theme_index(&state.pure.theme_name);
             }
             _ => {
                 if let Some(super::modal::ModalAction::Close) =
@@ -265,7 +265,7 @@ pub(super) fn update_settings_state(state: &mut AppState, key: KeyEvent) -> Opti
             }
             KeyCode::Tab | KeyCode::Right | KeyCode::Char('l') => {
                 state.settings.section = SettingsSection::Theme;
-                state.settings.list.selected = current_theme_index(&state.theme_name);
+                state.settings.list.selected = current_theme_index(&state.pure.theme_name);
             }
             _ => {
                 if let Some(super::modal::ModalAction::Close) =
@@ -305,10 +305,10 @@ pub(crate) fn open_settings(state: &mut AppState) {
 pub(crate) fn open_settings_at(state: &mut AppState, section: SettingsSection) {
     state.integration_install_messages.clear();
     state.settings.original_palette = Some(state.palette.clone());
-    state.settings.original_theme = Some(state.theme_name.clone());
+    state.settings.original_theme = Some(state.pure.theme_name.clone());
     state.settings.section = section;
     state.settings.list.selected = match section {
-        SettingsSection::Theme => current_theme_index(&state.theme_name),
+        SettingsSection::Theme => current_theme_index(&state.pure.theme_name),
         SettingsSection::Sound => usize::from(!state.sound_enabled()),
         SettingsSection::Toast => toast_delivery_index(state.toast_delivery()),
         SettingsSection::PaneLabels => usize::from(!state.agent_border_labels_enabled()),
@@ -425,7 +425,7 @@ impl AppState {
                 if let Some(section) = self.settings_tab_at(mouse.column, mouse.row) {
                     self.settings.section = section;
                     self.settings.list.select(match section {
-                        SettingsSection::Theme => current_theme_index(&self.theme_name),
+                        SettingsSection::Theme => current_theme_index(&self.pure.theme_name),
                         SettingsSection::Sound => usize::from(!self.sound_enabled()),
                         SettingsSection::Toast => toast_delivery_index(self.toast_delivery()),
                         SettingsSection::PaneLabels => {
@@ -496,14 +496,14 @@ mod tests {
     fn settings_cancel_restores_previewed_theme_from_other_sections() {
         let mut state = state_with_workspaces(&["test"]);
         let original_palette = state.palette.clone();
-        let original_theme = state.theme_name.clone();
+        let original_theme = state.pure.theme_name.clone();
 
         open_settings(&mut state);
         update_settings_state(
             &mut state,
             KeyEvent::new(KeyCode::Down, KeyModifiers::empty()),
         );
-        assert_ne!(state.theme_name, original_theme);
+        assert_ne!(state.pure.theme_name, original_theme);
 
         update_settings_state(
             &mut state,
@@ -520,7 +520,7 @@ mod tests {
         );
 
         assert_eq!(state.mode, Mode::Terminal);
-        assert_eq!(state.theme_name, original_theme);
+        assert_eq!(state.pure.theme_name, original_theme);
         assert_eq!(state.palette.accent, original_palette.accent);
         assert_eq!(state.palette.panel_bg, original_palette.panel_bg);
     }

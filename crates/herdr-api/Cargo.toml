@@ -1,0 +1,17 @@
+[package]
+name = "herdr-api"
+version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+homepage = { workspace = true }
+
+[dependencies]
+herdr-state = { path = "../herdr-state" }
+herdr-test-support = { path = "../herdr-test-support" }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+bytes = { workspace = true }
+interprocess = { workspace = true }

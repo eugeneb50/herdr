@@ -18,8 +18,8 @@ impl App {
     }
 
     pub(crate) fn sync_session_save_schedule(&mut self) {
-        if self.state.session_dirty {
-            self.state.session_dirty = false;
+        if self.state.pure.session_dirty {
+            self.state.pure.session_dirty = false;
             self.schedule_session_save();
         }
     }
@@ -46,9 +46,9 @@ impl App {
                 &self.terminal_runtimes,
                 self.state.active,
                 self.state.selected,
-                self.state.sidebar_width,
-                self.state.sidebar_section_split,
-                self.state.collapsed_space_keys.clone(),
+                self.state.pure.sidebar_width,
+                self.state.pure.sidebar_section_split,
+                self.state.pure.collapsed_space_keys.clone(),
             );
             let history = self.persist_pane_history.then(|| {
                 crate::persist::capture_history(&self.state.workspaces, &self.terminal_runtimes)

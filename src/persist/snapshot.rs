@@ -536,9 +536,9 @@ mod tests {
             terminal_runtimes,
             state.active,
             state.selected,
-            state.sidebar_width,
-            state.sidebar_section_split,
-            state.collapsed_space_keys.clone(),
+            state.pure.sidebar_width,
+            state.pure.sidebar_section_split,
+            state.pure.collapsed_space_keys.clone(),
         )
     }
 
@@ -828,9 +828,9 @@ mod tests {
     #[test]
     fn capture_contract_tracks_sidebar_state() {
         let mut state = state_with_workspaces(&["one"]);
-        state.sidebar_width = 31;
-        state.sidebar_section_split = 0.4;
-        state.collapsed_space_keys.insert("repo-key".into());
+        state.pure.sidebar_width = 31;
+        state.pure.sidebar_section_split = 0.4;
+        state.pure.collapsed_space_keys.insert("repo-key".into());
 
         let snapshot = capture_from_state(&state);
         assert_eq!(snapshot.sidebar_width, Some(31));

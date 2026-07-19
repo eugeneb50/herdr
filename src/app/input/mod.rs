@@ -271,7 +271,7 @@ impl App {
             self.last_sidebar_divider_click = Some(now);
 
             if is_double_click {
-                self.state.sidebar_width = self.state.default_sidebar_width;
+                self.state.pure.sidebar_width = self.state.default_sidebar_width;
                 self.state.sidebar_width_source =
                     crate::app::state::SidebarWidthSource::ConfigDefault;
                 self.state.sidebar_width_auto = false;
@@ -742,9 +742,9 @@ fn capture_snapshot(state: &AppState) -> crate::persist::SessionSnapshot {
         &terminal_runtimes,
         state.active,
         state.selected,
-        state.sidebar_width,
-        state.sidebar_section_split,
-        state.collapsed_space_keys.clone(),
+        state.pure.sidebar_width,
+        state.pure.sidebar_section_split,
+        state.pure.collapsed_space_keys.clone(),
     )
 }
 

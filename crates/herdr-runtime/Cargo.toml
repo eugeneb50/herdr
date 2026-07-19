@@ -1,0 +1,23 @@
+[package]
+name = "herdr-runtime"
+version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+homepage = { workspace = true }
+
+[dependencies]
+herdr-state = { path = "../herdr-state" }
+herdr-test-support = { path = "../herdr-test-support" }
+tokio = { workspace = true }
+tracing = { workspace = true }
+interprocess = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+bytes = { workspace = true }
+toml = { workspace = true }
+portable-pty = { workspace = true }
+crossterm = { workspace = true }
+ratatui = { workspace = true }
+regex = { workspace = true }
+libc = { workspace = true }

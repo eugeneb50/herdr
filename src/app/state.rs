@@ -1,5 +1,6 @@
 use crate::config::{Keybinds, NewTerminalCwdConfig, SoundConfig, ToastConfig, ToastDelivery};
 use crossterm::event::{KeyCode, KeyModifiers};
+use herdr_state::AppState as PureAppState;
 use ratatui::layout::{Direction, Rect};
 use ratatui::style::Color;
 use std::hash::{Hash, Hasher};
@@ -1399,7 +1400,6 @@ pub struct AppState {
     pub worktree_open: Option<WorktreeOpenState>,
     pub worktree_remove: Option<WorktreeRemoveState>,
     pub worktree_directory: std::path::PathBuf,
-    pub collapsed_space_keys: std::collections::HashSet<String>,
     pub request_complete_onboarding: bool,
     pub name_input: String,
     pub name_input_replace_on_type: bool,
@@ -1426,7 +1426,6 @@ pub struct AppState {
     pub update_install_command: String,
     pub latest_release_notes_available: bool,
     pub update_dismissed: bool,
-    pub config_diagnostic: Option<String>,
     pub toast: Option<ToastNotification>,
     pub pending_agent_notifications: std::collections::HashMap<PaneId, PendingAgentNotification>,
     pub copy_feedback: Option<CopyFeedback>,
@@ -1437,7 +1436,6 @@ pub struct AppState {
     pub prefix_code: KeyCode,
     pub prefix_mods: KeyModifiers,
     pub default_sidebar_width: u16,
-    pub sidebar_width: u16,
     pub sidebar_min_width: u16,
     pub sidebar_max_width: u16,
     pub mobile_width_threshold: u16,
@@ -1445,8 +1443,6 @@ pub struct AppState {
     pub sidebar_width_auto: bool,
     pub sidebar_collapsed: bool,
     pub sidebar_collapsed_mode: crate::config::SidebarCollapsedModeConfig,
-    /// Ratio of sidebar height allocated to the workspaces section.
-    pub sidebar_section_split: f32,
     pub agent_panel_sort: AgentPanelSort,
     pub sidebar_agents: crate::config::AgentsSidebarConfig,
     pub sidebar_spaces: crate::config::SpacesSidebarConfig,
@@ -1495,8 +1491,6 @@ pub struct AppState {
     pub spinner_tick: u32,
     /// UI color palette — all sidebar/UI colors centralized for theming.
     pub palette: Palette,
-    /// Currently applied theme name (for settings UI).
-    pub theme_name: String,
     /// Runtime theme configuration used to resolve manual and auto-switch palettes.
     pub theme_runtime: ThemeRuntimeConfig,
     /// Last known foreground host terminal appearance.
@@ -1536,15 +1530,16 @@ pub struct AppState {
     /// Last known foreground host terminal cell size in pixels.
     pub(crate) host_cell_size: crate::kitty_graphics::HostCellSize,
     /// Set when a persisted session snapshot would change.
-    pub session_dirty: bool,
     /// Terminal runtimes that should be shut down by the app/runtime layer
     /// after state has detached their terminal metadata.
     pub(crate) terminal_runtime_shutdowns: Vec<crate::terminal::TerminalId>,
+    /// Pure state from herdr-state — migration target for shared fields.
+    pub pure: PureAppState,
 }
 
 impl AppState {
     pub(crate) fn mark_session_dirty(&mut self) {
-        self.session_dirty = true;
+        self.pure.session_dirty = true;
     }
 
     pub(crate) fn remove_alias_shadowed_by_new_pane(&mut self, pane_id: PaneId) {
@@ -1765,7 +1760,6 @@ impl AppState {
             worktree_open: None,
             worktree_remove: None,
             worktree_directory: std::path::PathBuf::from("/tmp/herdr-worktrees"),
-            collapsed_space_keys: std::collections::HashSet::new(),
             request_complete_onboarding: false,
             name_input: String::new(),
             name_input_replace_on_type: false,
@@ -1805,7 +1799,6 @@ impl AppState {
             update_install_command: "herdr update".into(),
             latest_release_notes_available: false,
             update_dismissed: false,
-            config_diagnostic: None,
             toast: None,
             pending_agent_notifications: std::collections::HashMap::new(),
             copy_feedback: None,
@@ -1813,7 +1806,6 @@ impl AppState {
             prefix_code: KeyCode::Char('b'),
             prefix_mods: KeyModifiers::CONTROL,
             default_sidebar_width: 26,
-            sidebar_width: 26,
             sidebar_min_width: 18,
             sidebar_max_width: 36,
             mobile_width_threshold: crate::config::DEFAULT_MOBILE_WIDTH_THRESHOLD,
@@ -1821,7 +1813,6 @@ impl AppState {
             sidebar_width_auto: false,
             sidebar_collapsed: false,
             sidebar_collapsed_mode: crate::config::SidebarCollapsedModeConfig::Compact,
-            sidebar_section_split: 0.5,
             agent_panel_sort: AgentPanelSort::Spaces,
             sidebar_agents: crate::config::AgentsSidebarConfig::default(),
             sidebar_spaces: crate::config::SpacesSidebarConfig::default(),
@@ -1859,7 +1850,6 @@ impl AppState {
             keybinds: Keybinds::default(),
             spinner_tick: 0,
             palette: Palette::catppuccin(),
-            theme_name: "catppuccin".to_string(),
             theme_runtime: ThemeRuntimeConfig {
                 manual_name: "catppuccin".to_string(),
                 dark_name: "catppuccin".to_string(),
@@ -1893,8 +1883,14 @@ impl AppState {
             global_menu: MenuListState::new(0),
             host_terminal_theme: TerminalTheme::default(),
             host_cell_size: crate::kitty_graphics::HostCellSize::default(),
-            session_dirty: false,
             terminal_runtime_shutdowns: Vec::new(),
+            pure: PureAppState {
+                theme_name: "catppuccin".to_string(),
+                sidebar_width: 26,
+                sidebar_section_split: 0.5,
+                collapsed_space_keys: std::collections::HashSet::new(),
+                ..Default::default()
+            },
         }
     }
 

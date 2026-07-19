@@ -1389,7 +1389,7 @@ impl AppState {
 
         let (_, detail_area) = crate::ui::expanded_sidebar_sections(
             self.view.sidebar_rect,
-            self.sidebar_section_split,
+            self.pure.sidebar_section_split,
         );
         self.agent_panel_scroll = crate::ui::agent_panel_scroll_for_target(
             self,
@@ -4831,7 +4831,7 @@ mod tests {
             session_ref: crate::agent_resume::AgentSessionRef::path(first_session),
         });
         assert_eq!(first_updates.len(), 1);
-        state.session_dirty = false;
+        state.pure.session_dirty = false;
 
         let second_updates = state.handle_app_event(AppEvent::HookStateReported {
             pane_id,
@@ -4844,7 +4844,7 @@ mod tests {
         });
 
         assert!(second_updates.is_empty());
-        assert!(state.session_dirty);
+        assert!(state.pure.session_dirty);
     }
 
     #[test]
@@ -4859,7 +4859,7 @@ mod tests {
         let cwd =
             std::env::temp_dir().join(format!("herdr-cwd-report-test-{}", std::process::id()));
         std::fs::create_dir_all(&cwd).unwrap();
-        state.session_dirty = false;
+        state.pure.session_dirty = false;
 
         let updates = state.handle_app_event(AppEvent::TerminalCwdReported {
             pane_id,
@@ -4868,7 +4868,7 @@ mod tests {
 
         assert!(updates.is_empty());
         assert_eq!(state.terminals.get(&terminal_id).unwrap().cwd, cwd);
-        assert!(state.session_dirty);
+        assert!(state.pure.session_dirty);
         let _ = std::fs::remove_dir_all(cwd);
     }
 

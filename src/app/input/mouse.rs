@@ -569,9 +569,9 @@ impl AppState {
                             crate::ui::workspace_parent_group_state(self, card.ws_idx)
                         {
                             if collapsed {
-                                self.collapsed_space_keys.remove(&key);
+                                self.pure.collapsed_space_keys.remove(&key);
                             } else {
-                                self.collapsed_space_keys.insert(key);
+                                self.pure.collapsed_space_keys.insert(key);
                             }
                             self.mark_session_dirty();
                             return None;

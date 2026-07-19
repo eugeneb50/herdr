@@ -83,7 +83,7 @@ impl App {
             match self.worktree_source_metadata(ws_idx) {
                 Ok(metadata) => metadata,
                 Err(err) => {
-                    self.state.config_diagnostic = Some(err);
+                    self.state.pure.config_diagnostic = Some(err);
                     return;
                 }
             };
@@ -133,7 +133,7 @@ impl App {
             .worktree_space()
             .is_some_and(|space| space.is_linked_worktree)
         {
-            self.state.config_diagnostic =
+            self.state.pure.config_diagnostic =
                 Some("This workspace is not a Herdr-managed worktree checkout.".into());
             return;
         }
@@ -157,7 +157,7 @@ impl App {
             match self.worktree_source_metadata(ws_idx) {
                 Ok(metadata) => metadata,
                 Err(err) => {
-                    self.state.config_diagnostic = Some(err);
+                    self.state.pure.config_diagnostic = Some(err);
                     return;
                 }
             };
@@ -165,7 +165,7 @@ impl App {
         let list = match crate::worktree::list_existing_worktrees(&space.repo_root) {
             Ok(list) => list,
             Err(err) => {
-                self.state.config_diagnostic = Some(err);
+                self.state.pure.config_diagnostic = Some(err);
                 return;
             }
         };
@@ -213,7 +213,7 @@ impl App {
             .collect::<Vec<_>>();
 
         if entries.is_empty() {
-            self.state.config_diagnostic = Some("No Git worktrees found for this repo.".into());
+            self.state.pure.config_diagnostic = Some("No Git worktrees found for this repo.".into());
             return;
         }
 
@@ -857,7 +857,7 @@ impl App {
                             }
                         }
                         Err(err) => {
-                            self.state.config_diagnostic = Some(format!(
+                            self.state.pure.config_diagnostic = Some(format!(
                                 "created worktree but failed to open workspace: {err}"
                             ));
                             self.state.mode = Mode::Navigate;
@@ -1509,16 +1509,16 @@ mod tests {
         assert_eq!(app.state.mode, Mode::Navigate);
         assert!(app.state.worktree_create.is_none());
         assert_eq!(
-            app.state.config_diagnostic.as_deref(),
+            app.state.pure.config_diagnostic.as_deref(),
             Some("New and open worktree actions start from the repo parent workspace.")
         );
 
-        app.state.config_diagnostic = None;
+        app.state.pure.config_diagnostic = None;
         app.open_existing_worktree_dialog(0);
 
         assert!(app.state.worktree_open.is_none());
         assert_eq!(
-            app.state.config_diagnostic.as_deref(),
+            app.state.pure.config_diagnostic.as_deref(),
             Some("New and open worktree actions start from the repo parent workspace.")
         );
     }
@@ -2010,7 +2010,7 @@ mod tests {
         app.open_new_linked_worktree_dialog(0);
 
         assert_eq!(app.state.mode, Mode::NewLinkedWorktree);
-        assert!(app.state.config_diagnostic.is_none());
+        assert!(app.state.pure.config_diagnostic.is_none());
         let create = app.state.worktree_create.as_ref().unwrap();
         assert_eq!(create.source_checkout_path, bare);
         assert_eq!(create.source_repo_root, create.source_checkout_path);

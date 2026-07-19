@@ -1351,9 +1351,9 @@ mod tests {
             &app.terminal_runtimes,
             app.state.active,
             app.state.selected,
-            app.state.sidebar_width,
-            app.state.sidebar_section_split,
-            app.state.collapsed_space_keys.clone(),
+            app.state.pure.sidebar_width,
+            app.state.pure.sidebar_section_split,
+            app.state.pure.collapsed_space_keys.clone(),
         );
         assert_eq!(snapshot.workspaces[0].tabs[0].panes.len(), 1);
         assert!(matches!(

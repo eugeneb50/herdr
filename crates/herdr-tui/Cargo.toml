@@ -1,0 +1,18 @@
+[package]
+name = "herdr-tui"
+version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+homepage = { workspace = true }
+
+[dependencies]
+herdr-state = { path = "../herdr-state" }
+herdr-test-support = { path = "../herdr-test-support" }
+ratatui = { workspace = true, features = ["unstable-rendered-line-info"] }
+crossterm = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+unicode-width = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }

@@ -10,7 +10,7 @@ impl AppState {
         if self.sidebar_collapsed || sidebar.width <= 1 || sidebar.height == 0 {
             return Rect::default();
         }
-        crate::ui::workspace_list_rect(sidebar, self.sidebar_section_split)
+        crate::ui::workspace_list_rect(sidebar, self.pure.sidebar_section_split)
     }
 
     pub(super) fn agent_panel_rect(&self) -> Rect {
@@ -19,7 +19,7 @@ impl AppState {
             return Rect::default();
         }
         let (_, detail_area) =
-            crate::ui::expanded_sidebar_sections(sidebar, self.sidebar_section_split);
+            crate::ui::expanded_sidebar_sections(sidebar, self.pure.sidebar_section_split);
         detail_area
     }
 
@@ -267,7 +267,7 @@ impl AppState {
     pub(super) fn set_manual_sidebar_width(&mut self, divider_col: u16) {
         let sidebar = self.view.sidebar_rect;
         let width = divider_col.saturating_sub(sidebar.x).saturating_add(1);
-        self.sidebar_width = width.clamp(self.sidebar_min_width, self.sidebar_max_width);
+        self.pure.sidebar_width = width.clamp(self.sidebar_min_width, self.sidebar_max_width);
         self.sidebar_width_source = crate::app::state::SidebarWidthSource::Manual;
         self.mark_session_dirty();
     }
@@ -278,7 +278,7 @@ impl AppState {
         }
         let rect = crate::ui::sidebar_section_divider_rect(
             self.view.sidebar_rect,
-            self.sidebar_section_split,
+            self.pure.sidebar_section_split,
         );
         rect.width > 0
             && col >= rect.x
@@ -295,7 +295,7 @@ impl AppState {
         }
         let relative_y = row.saturating_sub(sidebar.y);
         let ratio = (relative_y as f32) / (content_height as f32);
-        self.sidebar_section_split = ratio.clamp(0.1, 0.9);
+        self.pure.sidebar_section_split = ratio.clamp(0.1, 0.9);
         self.mark_session_dirty();
     }
 
@@ -419,7 +419,7 @@ impl AppState {
 
         let (_, detail_area) = crate::ui::expanded_sidebar_sections(
             self.view.sidebar_rect,
-            self.sidebar_section_split,
+            self.pure.sidebar_section_split,
         );
         let rect = crate::ui::agent_panel_toggle_rect(detail_area, self.agent_panel_sort);
         rect.width > 0
@@ -1144,7 +1144,7 @@ mod tests {
         ));
 
         assert_eq!(app.state.active, Some(0));
-        assert!(!app.state.collapsed_space_keys.contains("repo-key"));
+        assert!(!app.state.pure.collapsed_space_keys.contains("repo-key"));
     }
 
     #[test]
@@ -1174,7 +1174,7 @@ mod tests {
 
         assert_eq!(app.state.active, None);
         assert!(app.state.workspace_press.is_none());
-        assert!(app.state.collapsed_space_keys.contains("repo-key"));
+        assert!(app.state.pure.collapsed_space_keys.contains("repo-key"));
 
         app.handle_mouse(mouse(
             MouseEventKind::Down(MouseButton::Left),
@@ -1182,7 +1182,7 @@ mod tests {
             parent.y,
         ));
 
-        assert!(!app.state.collapsed_space_keys.contains("repo-key"));
+        assert!(!app.state.pure.collapsed_space_keys.contains("repo-key"));
     }
 
     #[test]

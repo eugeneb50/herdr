@@ -271,7 +271,7 @@ pub(crate) fn workspace_parent_group_state(
     (member_count >= 2).then(|| {
         (
             space.key.clone(),
-            app.collapsed_space_keys.contains(&space.key),
+            app.pure.collapsed_space_keys.contains(&space.key),
         )
     })
 }
@@ -306,7 +306,7 @@ pub(crate) fn next_entry_is_indented_workspace(entries: &[WorkspaceListEntry], i
 }
 
 pub(crate) fn normalized_workspace_scroll(app: &AppState, area: Rect, requested: usize) -> usize {
-    let ws_area = workspace_list_rect(area, app.sidebar_section_split);
+    let ws_area = workspace_list_rect(area, app.pure.sidebar_section_split);
     let body = workspace_list_body_rect(ws_area, false);
     if body.height == 0 {
         return requested;
@@ -399,7 +399,7 @@ fn workspace_list_entries_inner(app: &AppState, force_expanded: bool) -> Vec<Wor
             });
             continue;
         };
-        let collapsed = !force_expanded && app.collapsed_space_keys.contains(&space.key);
+        let collapsed = !force_expanded && app.pure.collapsed_space_keys.contains(&space.key);
         entries.push(WorkspaceListEntry::Workspace {
             ws_idx: parent_idx,
             indented: false,
@@ -654,7 +654,7 @@ pub(crate) fn compute_workspace_list_areas(
     app: &AppState,
     area: Rect,
 ) -> (Vec<crate::app::state::WorkspaceCardArea>, Vec<()>) {
-    let ws_area = workspace_list_rect(area, app.sidebar_section_split);
+    let ws_area = workspace_list_rect(area, app.pure.sidebar_section_split);
     if ws_area == Rect::default() {
         return (Vec::new(), Vec::new());
     }
@@ -886,7 +886,7 @@ pub(super) fn render_sidebar(
         buf[(sep_x, y)].set_style(sep_style);
     }
 
-    let (ws_area, detail_area) = expanded_sidebar_sections(area, app.sidebar_section_split);
+    let (ws_area, detail_area) = expanded_sidebar_sections(area, app.pure.sidebar_section_split);
 
     render_workspace_list(app, terminal_runtimes, frame, ws_area, is_navigating);
     render_agent_detail(app, terminal_runtimes, frame, detail_area);
@@ -1485,7 +1485,7 @@ mod tests {
             .draw(|frame| render_sidebar(&app, &TerminalRuntimeRegistry::new(), frame, area))
             .unwrap();
         let buffer = terminal.backend().buffer();
-        let (_, agent_area) = expanded_sidebar_sections(area, app.sidebar_section_split);
+        let (_, agent_area) = expanded_sidebar_sections(area, app.pure.sidebar_section_split);
         let body = agent_panel_body_rect(agent_area, false);
 
         let first = row_text(buffer, body.y, 25);
@@ -1536,7 +1536,7 @@ rows = [[{ token = "workspace", bold = false }, { token = "agent", dim = false }
         terminal
             .draw(|frame| render_sidebar(&app, &TerminalRuntimeRegistry::new(), frame, area))
             .unwrap();
-        let (_, agent_area) = expanded_sidebar_sections(area, app.sidebar_section_split);
+        let (_, agent_area) = expanded_sidebar_sections(area, app.pure.sidebar_section_split);
         let body = agent_panel_body_rect(agent_area, false);
         let buffer = terminal.backend().buffer();
         let workspace = buffer[(find_symbol_x(buffer, body.y, body.width, "o"), body.y)].style();
@@ -1708,7 +1708,7 @@ rows = [[{ token = "git_status", fg = "#123456" }]]
             .draw(|frame| render_sidebar(&app, &TerminalRuntimeRegistry::new(), frame, area))
             .unwrap();
         let buffer = terminal.backend().buffer();
-        let (_, agent_area) = expanded_sidebar_sections(area, app.sidebar_section_split);
+        let (_, agent_area) = expanded_sidebar_sections(area, app.pure.sidebar_section_split);
         let body = agent_panel_body_rect(agent_area, false);
         let first = row_text(buffer, body.y, 17);
 
@@ -1738,7 +1738,7 @@ rows = [[{ token = "git_status", fg = "#123456" }]]
         renderer
             .draw(|frame| render_sidebar(&app, &TerminalRuntimeRegistry::new(), frame, area))
             .unwrap();
-        let (_, agent_area) = expanded_sidebar_sections(area, app.sidebar_section_split);
+        let (_, agent_area) = expanded_sidebar_sections(area, app.pure.sidebar_section_split);
         let body = agent_panel_body_rect(agent_area, false);
         let rendered = row_text(renderer.backend().buffer(), body.y, 9);
 
@@ -1814,7 +1814,7 @@ rows = [[{ token = "git_status", fg = "#123456" }]]
         app.workspaces = vec![Workspace::test_new("one"), Workspace::test_new("two")];
         app.sidebar_spaces.rows = vec![vec![crate::config::SpaceSidebarToken::Workspace]; 6];
         let area = Rect::new(0, 0, 20, 10);
-        let workspace_area = workspace_list_rect(area, app.sidebar_section_split);
+        let workspace_area = workspace_list_rect(area, app.pure.sidebar_section_split);
         let body = workspace_list_body_rect(workspace_area, false);
 
         let metrics = workspace_list_scroll_metrics(&app, workspace_area);
@@ -2329,7 +2329,7 @@ rows = [[{ token = "git_status", fg = "#123456" }]]
         app.sidebar_spaces.row_gap = 0;
         let area = Rect::new(0, 0, 30, 20);
         app.view.workspace_card_areas = compute_workspace_card_areas(&app, area);
-        let list_area = workspace_list_rect(area, app.sidebar_section_split);
+        let list_area = workspace_list_rect(area, app.pure.sidebar_section_split);
         let indicator_row =
             workspace_drop_indicator_row(&app.view.workspace_card_areas, list_area, 2).unwrap();
         assert_eq!(indicator_row, app.view.workspace_card_areas[1].rect.y);
@@ -2414,7 +2414,7 @@ rows = [[{ token = "git_status", fg = "#123456" }]]
         for workspace in &mut app.workspaces {
             workspace.cached_git_branch = Some("main".into());
         }
-        app.collapsed_space_keys.insert("repo-key".into());
+        app.pure.collapsed_space_keys.insert("repo-key".into());
         app.active = None;
         app.mode = Mode::Terminal;
 
@@ -2434,7 +2434,7 @@ rows = [[{ token = "git_status", fg = "#123456" }]]
             workspace_with_worktree_space("issue", Some("repo-key"), "/repo/herdr-issue"),
             Workspace::test_new("notes"),
         ];
-        app.collapsed_space_keys.insert("repo-key".into());
+        app.pure.collapsed_space_keys.insert("repo-key".into());
         app.active = None;
         app.mode = Mode::Terminal;
         app.workspace_scroll = 1;
@@ -2580,7 +2580,7 @@ rows = [[{ token = "git_status", fg = "#123456" }]]
         ];
         app.active = Some(1);
         app.mode = Mode::Terminal;
-        app.collapsed_space_keys.insert("repo-key".into());
+        app.pure.collapsed_space_keys.insert("repo-key".into());
 
         assert_eq!(
             workspace_list_entries(&app),
@@ -2617,7 +2617,7 @@ rows = [[{ token = "git_status", fg = "#123456" }]]
         app.mode = Mode::Navigate;
         app.selected = 1;
         app.active = Some(1);
-        app.collapsed_space_keys.insert("repo-key".into());
+        app.pure.collapsed_space_keys.insert("repo-key".into());
 
         assert_eq!(
             workspace_list_entries(&app),

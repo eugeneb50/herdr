@@ -235,7 +235,7 @@ impl App {
             .is_some_and(|deadline| now >= deadline)
         {
             self.config_diagnostic_deadline = None;
-            self.state.config_diagnostic = None;
+            self.state.pure.config_diagnostic = None;
             changed = true;
         }
 

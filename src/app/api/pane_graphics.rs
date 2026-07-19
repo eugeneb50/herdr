@@ -352,7 +352,7 @@ mod tests {
         assert_eq!(layer.image_height, 1);
         assert_eq!(layer.render.grid_cols, 10);
         assert_eq!(layer.render.grid_rows, 4);
-        assert!(!app.state.session_dirty);
+        assert!(!app.state.pure.session_dirty);
 
         let response = app.handle_api_request(crate::api::schema::Request {
             id: "graphics-clear".into(),

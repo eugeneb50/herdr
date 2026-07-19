@@ -1106,9 +1106,9 @@ impl HeadlessServer {
             &self.app.terminal_runtimes,
             self.app.state.active,
             self.app.state.selected,
-            self.app.state.sidebar_width,
-            self.app.state.sidebar_section_split,
-            self.app.state.collapsed_space_keys.clone(),
+            self.app.state.pure.sidebar_width,
+            self.app.state.pure.sidebar_section_split,
+            self.app.state.pure.collapsed_space_keys.clone(),
         );
 
         let mut handoff_entries = Vec::new();
@@ -1271,10 +1271,10 @@ impl HeadlessServer {
         } else {
             &self.server_config_diagnostic
         };
-        if self.app.state.config_diagnostic == self.server_config_diagnostic
-            || self.app.state.config_diagnostic == self.server_config_diagnostic_without_keybindings
+        if self.app.state.pure.config_diagnostic == self.server_config_diagnostic
+            || self.app.state.pure.config_diagnostic == self.server_config_diagnostic_without_keybindings
         {
-            self.app.state.config_diagnostic = visible.clone();
+            self.app.state.pure.config_diagnostic = visible.clone();
         }
     }
 
@@ -3845,7 +3845,7 @@ impl HeadlessServer {
             .is_some_and(|deadline| now >= deadline)
         {
             self.app.config_diagnostic_deadline = None;
-            self.app.state.config_diagnostic = None;
+            self.app.state.pure.config_diagnostic = None;
             changed = true;
         }
 
@@ -4862,7 +4862,7 @@ new_tab = "prefix+t"
         let (full, without_keybindings) = server_config_diagnostic_summaries(&diagnostics);
         server.server_config_diagnostic = full.clone();
         server.server_config_diagnostic_without_keybindings = without_keybindings.clone();
-        server.app.state.config_diagnostic = full;
+        server.app.state.pure.config_diagnostic = full;
         let local_keybindings = crate::config::Config::default().live_keybinds().unwrap();
         let (writer_a, _control_a, _render_a) = test_client_writer();
         let (writer_b, _control_b, _render_b) = test_client_writer();
@@ -4878,7 +4878,7 @@ new_tab = "prefix+t"
             direct_attach_requested: false,
             writer: writer_a,
         }));
-        assert_eq!(server.app.state.config_diagnostic, without_keybindings);
+        assert_eq!(server.app.state.pure.config_diagnostic, without_keybindings);
 
         assert!(server.handle_server_event(ServerEvent::ClientConnected {
             client_id: 2,
@@ -4892,7 +4892,7 @@ new_tab = "prefix+t"
             writer: writer_b,
         }));
         assert_eq!(
-            server.app.state.config_diagnostic,
+            server.app.state.pure.config_diagnostic,
             server.server_config_diagnostic
         );
     }
@@ -6597,10 +6597,10 @@ next_tab = ""
         );
 
         assert!(server.promote_client_to_foreground(1));
-        assert_eq!(server.app.state.theme_name, "catppuccin");
+        assert_eq!(server.app.state.pure.theme_name, "catppuccin");
 
         assert!(server.promote_client_to_foreground(2));
-        assert_eq!(server.app.state.theme_name, "catppuccin-latte");
+        assert_eq!(server.app.state.pure.theme_name, "catppuccin-latte");
     }
 
     #[test]

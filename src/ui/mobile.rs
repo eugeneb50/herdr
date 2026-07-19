@@ -1299,7 +1299,7 @@ mod tests {
 
         // Mobile ignores collapse: even with the space folded on desktop, the
         // worktree child still renders in the same position.
-        app.collapsed_space_keys.insert("repo-key".to_string());
+        app.pure.collapsed_space_keys.insert("repo-key".to_string());
         assert_eq!(mobile_switcher_workspace_doc_range(&app, 2).start, 4);
         let hit = mobile_switcher_target_at(&app, viewport.x + 2, viewport.y + 4);
         assert_eq!(hit, Some(MobileSwitcherTarget::Workspace(2)));

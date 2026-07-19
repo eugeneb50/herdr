@@ -30,6 +30,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use herdr_state::AppState as PureAppState;
+
 const MIN_RENDER_INTERVAL: Duration = Duration::from_millis(16);
 pub(crate) const ANIMATION_INTERVAL: Duration = Duration::from_millis(16);
 pub(crate) const HEADLESS_ANIMATION_INTERVAL: Duration = Duration::from_millis(128);
@@ -539,7 +541,6 @@ impl App {
             worktree_open: None,
             worktree_remove: None,
             worktree_directory,
-            collapsed_space_keys,
             request_complete_onboarding: false,
             name_input: String::new(),
             name_input_replace_on_type: false,
@@ -588,7 +589,6 @@ impl App {
             update_install_command,
             latest_release_notes_available,
             update_dismissed: false,
-            config_diagnostic,
             toast: None,
             pending_agent_notifications: std::collections::HashMap::new(),
             copy_feedback: None,
@@ -596,7 +596,6 @@ impl App {
             prefix_code,
             prefix_mods,
             default_sidebar_width: config.ui.sidebar_width,
-            sidebar_width,
             sidebar_min_width,
             sidebar_max_width,
             mobile_width_threshold: config.ui.mobile_width_threshold,
@@ -604,7 +603,6 @@ impl App {
             sidebar_width_auto: false,
             sidebar_collapsed: config.ui.sidebar_start_collapsed,
             sidebar_collapsed_mode: config.ui.sidebar_collapsed_mode,
-            sidebar_section_split,
             agent_panel_sort,
             sidebar_agents: config.ui.sidebar.agents.clone(),
             sidebar_spaces: config.ui.sidebar.spaces.clone(),
@@ -641,7 +639,6 @@ impl App {
             keybinds: config.keybinds(),
             spinner_tick: 0,
             palette: theme_palette,
-            theme_name,
             theme_runtime,
             host_terminal_appearance: None,
             host_terminal_appearance_explicit: false,
@@ -667,8 +664,15 @@ impl App {
             global_menu: state::MenuListState::new(0),
             host_terminal_theme: crate::terminal_theme::TerminalTheme::default(),
             host_cell_size: crate::kitty_graphics::HostCellSize::default(),
-            session_dirty: false,
             terminal_runtime_shutdowns: Vec::new(),
+            pure: PureAppState {
+                theme_name,
+                config_diagnostic,
+                sidebar_width,
+                sidebar_section_split,
+                collapsed_space_keys,
+                ..Default::default()
+            },
         };
 
         state.terminals = restored_terminals;
@@ -810,13 +814,13 @@ impl App {
             .selected
             .min(app.state.workspaces.len().saturating_sub(1));
         if let Some(width) = snapshot.sidebar_width {
-            app.state.sidebar_width = width;
+            app.state.pure.sidebar_width = width;
             app.state.sidebar_width_source = state::SidebarWidthSource::Persisted;
         }
         if let Some(split) = snapshot.sidebar_section_split {
-            app.state.sidebar_section_split = split;
+            app.state.pure.sidebar_section_split = split;
         }
-        app.state.collapsed_space_keys = snapshot.collapsed_space_keys.clone();
+        app.state.pure.collapsed_space_keys = snapshot.collapsed_space_keys.clone();
         app.state.mode = if app.state.active.is_some() {
             state::Mode::Terminal
         } else {
@@ -1187,7 +1191,7 @@ impl App {
         self.state.release_notes = None;
         if !preview {
             if let Err(err) = crate::release_notes::mark_current_version_seen() {
-                self.state.config_diagnostic =
+                self.state.pure.config_diagnostic =
                     Some(format!("failed to update release notes status: {err}"));
                 self.config_diagnostic_deadline = Some(Instant::now() + Duration::from_secs(5));
             }
@@ -1210,7 +1214,7 @@ impl App {
                 if let Err(err) =
                     crate::product_announcements::mark_seen(&announcement.version, &announcement.id)
                 {
-                    self.state.config_diagnostic =
+                    self.state.pure.config_diagnostic =
                         Some(format!("failed to update announcement status: {err}"));
                     self.config_diagnostic_deadline = Some(Instant::now() + Duration::from_secs(5));
                 }
@@ -1324,7 +1328,7 @@ impl App {
             ),
             Err(diagnostics) => {
                 self.state.toast = None;
-                self.state.config_diagnostic =
+                self.state.pure.config_diagnostic =
                     crate::config::config_diagnostic_summary(&diagnostics);
                 self.config_diagnostic_deadline = None;
                 crate::config::ConfigReloadReport {
@@ -1378,7 +1382,7 @@ impl App {
 
                 self.state.default_sidebar_width = config.ui.sidebar_width;
                 if self.state.sidebar_width_source == state::SidebarWidthSource::ConfigDefault {
-                    self.state.sidebar_width = config.ui.sidebar_width;
+                    self.state.pure.sidebar_width = config.ui.sidebar_width;
                 }
                 self.state.sidebar_min_width = config.ui.sidebar_min_width;
                 self.state.sidebar_max_width = config.ui.sidebar_max_width;
@@ -1386,8 +1390,9 @@ impl App {
                 self.state.mobile_width_threshold = config.ui.mobile_width_threshold;
                 // Re-clamp the live width to the new bounds. No source guard — bounds
                 // always apply, including to widths owned by Persisted or Manual.
-                self.state.sidebar_width = self
+                self.state.pure.sidebar_width = self
                     .state
+                    .pure
                     .sidebar_width
                     .clamp(self.state.sidebar_min_width, self.state.sidebar_max_width);
                 self.state.mouse_capture = config.ui.mouse_capture;
@@ -1508,7 +1513,7 @@ impl App {
         };
 
         if diagnostics.is_empty() {
-            self.state.config_diagnostic = None;
+            self.state.pure.config_diagnostic = None;
             self.config_diagnostic_deadline = None;
             if notify_success {
                 self.state.toast = Some(crate::app::state::ToastNotification {
@@ -1520,7 +1525,7 @@ impl App {
                 });
             }
         } else {
-            self.state.config_diagnostic = crate::config::config_diagnostic_summary(&diagnostics);
+            self.state.pure.config_diagnostic = crate::config::config_diagnostic_summary(&diagnostics);
             self.config_diagnostic_deadline = None;
             if notify_success {
                 self.state.toast = Some(crate::app::state::ToastNotification {
@@ -2394,7 +2399,7 @@ mod tests {
         let app = App::new(&config, true, None, api_rx, crate::api::EventHub::default());
 
         assert!(!app.state.theme_runtime.auto_switch);
-        assert_eq!(app.state.theme_name, "tokyo-night");
+        assert_eq!(app.state.pure.theme_name, "tokyo-night");
         assert_eq!(app.state.palette, state::Palette::tokyo_night());
     }
 
@@ -2406,12 +2411,12 @@ mod tests {
         let (_api_tx, api_rx) = tokio::sync::mpsc::unbounded_channel();
         let mut app = App::new(&config, true, None, api_rx, crate::api::EventHub::default());
 
-        assert_eq!(app.state.theme_name, "tokyo-night");
+        assert_eq!(app.state.pure.theme_name, "tokyo-night");
         assert!(
             app.set_host_terminal_appearance(crate::terminal_theme::HostAppearance::Light, true)
         );
 
-        assert_eq!(app.state.theme_name, "tokyo-night-day");
+        assert_eq!(app.state.pure.theme_name, "tokyo-night-day");
         assert_eq!(app.state.palette, state::Palette::tokyo_night_day());
     }
 
@@ -2429,7 +2434,7 @@ mod tests {
 
         app.set_host_terminal_appearance(crate::terminal_theme::HostAppearance::Light, true);
 
-        assert_eq!(app.state.theme_name, "gruvbox-light");
+        assert_eq!(app.state.pure.theme_name, "gruvbox-light");
         assert_eq!(
             app.state.palette.accent,
             ratatui::style::Color::Rgb(1, 2, 3)
@@ -2458,7 +2463,7 @@ mod tests {
             app.state.host_terminal_appearance,
             Some(crate::terminal_theme::HostAppearance::Dark)
         );
-        assert_eq!(app.state.theme_name, "catppuccin");
+        assert_eq!(app.state.pure.theme_name, "catppuccin");
     }
 
     #[test]
@@ -2658,7 +2663,7 @@ mod tests {
         assert!(app.next_auto_update_check.is_none());
         assert!(app.next_agent_manifest_update_check.is_none());
         assert!(app.state.switch_ascii_input_source_in_prefix);
-        assert!(app.state.config_diagnostic.is_none());
+        assert!(app.state.pure.config_diagnostic.is_none());
         let toast = app.state.toast.as_ref().unwrap();
         assert_eq!(toast.kind, crate::app::state::ToastKind::UpdateInstalled);
         assert_eq!(toast.title, "reloaded config");
@@ -2709,15 +2714,15 @@ mod tests {
         let report = app.reload_config();
         assert_eq!(report.status, crate::config::ConfigReloadStatus::Applied);
         assert_eq!(app.state.default_sidebar_width, 34);
-        assert_eq!(app.state.sidebar_width, 34);
+        assert_eq!(app.state.pure.sidebar_width, 34);
 
-        app.state.sidebar_width = 31;
+        app.state.pure.sidebar_width = 31;
         app.state.sidebar_width_source = state::SidebarWidthSource::Manual;
         std::fs::write(&path, "[ui]\nsidebar_width = 35\n").unwrap();
         let report = app.reload_config();
         assert_eq!(report.status, crate::config::ConfigReloadStatus::Applied);
         assert_eq!(app.state.default_sidebar_width, 35);
-        assert_eq!(app.state.sidebar_width, 31);
+        assert_eq!(app.state.pure.sidebar_width, 31);
 
         std::env::remove_var(crate::config::CONFIG_PATH_ENV_VAR);
         let _ = std::fs::remove_dir_all(path.parent().unwrap());
@@ -2840,7 +2845,7 @@ mod tests {
 
         // Manually set a width and flip the source so the existing
         // sidebar_width-only-when-config-owned guard does NOT update it.
-        app.state.sidebar_width = 30;
+        app.state.pure.sidebar_width = 30;
         app.state.sidebar_width_source = state::SidebarWidthSource::Manual;
 
         // Tightening max below the current width must re-clamp the live width
@@ -2850,17 +2855,17 @@ mod tests {
         assert_eq!(report.status, crate::config::ConfigReloadStatus::Applied);
         assert_eq!(app.state.sidebar_max_width, 24);
         assert_eq!(
-            app.state.sidebar_width, 24,
+            app.state.pure.sidebar_width, 24,
             "manual width must re-clamp to new max"
         );
 
         // Loosening max leaves the live width alone (it's already within bounds).
-        app.state.sidebar_width = 24;
+        app.state.pure.sidebar_width = 24;
         std::fs::write(&path, "[ui]\nsidebar_max_width = 60\n").unwrap();
         let report = app.reload_config();
         assert_eq!(report.status, crate::config::ConfigReloadStatus::Applied);
         assert_eq!(app.state.sidebar_max_width, 60);
-        assert_eq!(app.state.sidebar_width, 24);
+        assert_eq!(app.state.pure.sidebar_width, 24);
 
         // Raising min above the current width re-clamps upward.
         std::fs::write(&path, "[ui]\nsidebar_min_width = 30\n").unwrap();
@@ -2868,7 +2873,7 @@ mod tests {
         assert_eq!(report.status, crate::config::ConfigReloadStatus::Applied);
         assert_eq!(app.state.sidebar_min_width, 30);
         assert_eq!(
-            app.state.sidebar_width, 30,
+            app.state.pure.sidebar_width, 30,
             "manual width must re-clamp up to new min"
         );
 
@@ -2955,7 +2960,7 @@ mod tests {
             "[ui] is treated as invalid on bad bounds; mouse_capture must not apply"
         );
         assert_eq!(
-            app.state.config_diagnostic.as_deref(),
+            app.state.pure.config_diagnostic.as_deref(),
             Some("config.toml; herdr config check")
         );
 
@@ -3020,7 +3025,7 @@ mod tests {
             .previous_workspace
             .matches_prefix(&KeyEvent::new(KeyCode::Char('l'), KeyModifiers::SHIFT)));
         assert!(app.state.keybinds.swap_pane_right.bindings.is_empty());
-        assert!(app.state.config_diagnostic.is_none());
+        assert!(app.state.pure.config_diagnostic.is_none());
 
         std::env::remove_var(crate::config::CONFIG_PATH_ENV_VAR);
         let _ = std::fs::remove_dir_all(path.parent().unwrap());
@@ -3116,7 +3121,7 @@ mod tests {
         );
         let content = std::fs::read_to_string(&path).unwrap();
         assert!(content.contains("delivery = \"terminal\""));
-        assert!(app.state.config_diagnostic.is_none());
+        assert!(app.state.pure.config_diagnostic.is_none());
 
         std::env::remove_var(crate::config::CONFIG_PATH_ENV_VAR);
         let _ = std::fs::remove_dir_all(path.parent().unwrap());
@@ -3138,7 +3143,7 @@ mod tests {
         assert_eq!(app.state.agent_panel_sort, state::AgentPanelSort::Priority);
         let content = std::fs::read_to_string(&path).unwrap();
         assert!(content.contains("agent_panel_sort = \"priority\""));
-        assert!(app.state.config_diagnostic.is_none());
+        assert!(app.state.pure.config_diagnostic.is_none());
 
         std::env::remove_var(crate::config::CONFIG_PATH_ENV_VAR);
         let _ = std::fs::remove_dir_all(path.parent().unwrap());
@@ -3163,7 +3168,7 @@ mod tests {
         let content = std::fs::read_to_string(&path).unwrap();
         assert!(content.contains("[experimental]"));
         assert!(content.contains("pane_history = true"));
-        assert!(app.state.config_diagnostic.is_none());
+        assert!(app.state.pure.config_diagnostic.is_none());
 
         std::env::remove_var(crate::config::CONFIG_PATH_ENV_VAR);
         let _ = std::fs::remove_dir_all(path.parent().unwrap());
@@ -4281,11 +4286,11 @@ mod tests {
     fn session_dirty_flag_schedules_debounced_save() {
         let mut app = test_app();
         app.no_session = false;
-        app.state.session_dirty = true;
+        app.state.pure.session_dirty = true;
 
         app.sync_session_save_schedule();
 
-        assert!(!app.state.session_dirty);
+        assert!(!app.state.pure.session_dirty);
         assert!(app.session_save_deadline.is_some());
     }
 
@@ -5121,7 +5126,7 @@ last_pane = "prefix+tab"
         app.state.active = Some(0);
         app.state.selected = 0;
         app.state.mode = Mode::Settings;
-        app.state.settings.original_theme = Some(app.state.theme_name.clone());
+        app.state.settings.original_theme = Some(app.state.pure.theme_name.clone());
         app.state.settings.original_palette = Some(app.state.palette.clone());
 
         app.route_client_input(b"\x1b".to_vec());

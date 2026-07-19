@@ -226,7 +226,7 @@ fn compute_view_internal(
             crate::config::SidebarCollapsedModeConfig::Hidden => 0,
         }
     } else {
-        app.sidebar_width
+        app.pure.sidebar_width
             .clamp(app.sidebar_min_width, app.sidebar_max_width)
     };
 
@@ -241,7 +241,7 @@ fn compute_view_internal(
 
     if !app.sidebar_collapsed {
         app.workspace_scroll = normalized_workspace_scroll(app, sidebar_area, app.workspace_scroll);
-        let (_, detail_area) = expanded_sidebar_sections(sidebar_area, app.sidebar_section_split);
+        let (_, detail_area) = expanded_sidebar_sections(sidebar_area, app.pure.sidebar_section_split);
         let max_agent_scroll = agent_panel_scroll_metrics(app, detail_area).max_offset_from_bottom;
         app.agent_panel_scroll = app.agent_panel_scroll.min(max_agent_scroll);
     } else {
@@ -294,7 +294,7 @@ fn compute_view_internal(
             toast_notification_rect(
                 area,
                 toast,
-                app.config_diagnostic.is_some(),
+                app.pure.config_diagnostic.is_some(),
                 toast.position.unwrap_or(app.toast_config.herdr.position),
             )
         })
@@ -360,7 +360,7 @@ fn compute_mobile_view(
     let toast_hit_area = app
         .toast
         .as_ref()
-        .map(|_| mobile_toast_banner_rect(area, app.config_diagnostic.is_some()))
+        .map(|_| mobile_toast_banner_rect(area, app.pure.config_diagnostic.is_some()))
         .unwrap_or_default();
 
     app.view = crate::app::ViewState {
@@ -456,8 +456,8 @@ pub fn render_with_runtime_registry(
 }
 
 fn render_notifications(app: &AppState, frame: &mut Frame, terminal_area: Rect) {
-    let has_config_diagnostic = app.config_diagnostic.is_some();
-    if let Some(message) = &app.config_diagnostic {
+    let has_config_diagnostic = app.pure.config_diagnostic.is_some();
+    if let Some(message) = &app.pure.config_diagnostic {
         let diagnostic_area = if app.view.layout == ViewLayout::Mobile {
             terminal_area
         } else {
@@ -692,7 +692,7 @@ mod tests {
         app.active = Some(0);
         app.selected = 0;
         app.mode = Mode::Terminal;
-        app.config_diagnostic = Some("config.toml:100:10; herdr config check".into());
+        app.pure.config_diagnostic = Some("config.toml:100:10; herdr config check".into());
 
         let area = Rect::new(0, 0, 44, 20);
         compute_view(&mut app, area);
@@ -735,7 +735,7 @@ mod tests {
         app.active = Some(0);
         app.selected = 0;
         app.mode = Mode::Terminal;
-        app.config_diagnostic = Some("config warning".into());
+        app.pure.config_diagnostic = Some("config warning".into());
         app.toast_config.herdr.position = crate::config::ToastHerdrPosition::TopLeft;
         app.toast = Some(crate::app::state::ToastNotification {
             kind: crate::app::state::ToastKind::Finished,
@@ -879,7 +879,7 @@ mod tests {
             scroll: 0,
             preview: false,
         });
-        app.config_diagnostic = Some(
+        app.pure.config_diagnostic = Some(
             "unsafe direct keybinding: keys.new_workspace = \"n\"\nunsafe direct keybinding: keys.new_tab = \"c\""
                 .into(),
         );
@@ -913,7 +913,7 @@ mod tests {
         app.selected = 0;
         app.mode = Mode::Terminal;
         app.sidebar_max_width = 30;
-        app.sidebar_width = 999;
+        app.pure.sidebar_width = 999;
 
         compute_view(&mut app, Rect::new(0, 0, 100, 20));
 
@@ -928,7 +928,7 @@ mod tests {
         app.selected = 0;
         app.mode = Mode::Terminal;
         app.sidebar_min_width = 22;
-        app.sidebar_width = 5;
+        app.pure.sidebar_width = 5;
 
         compute_view(&mut app, Rect::new(0, 0, 100, 20));
 
